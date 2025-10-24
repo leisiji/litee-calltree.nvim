@@ -19,9 +19,11 @@ function M.marshal_func(node)
         end
         local file, relative = lib_util.relative_path_from_uri(location.uri)
         if relative then
-            detail = file .. " " .. references
+            local line_num = location.range.start.line + 1
+            detail = file .. " " .. line_num .. " " .. references
         elseif node.symbol.detail ~= nil then
-            detail = node.symbol.detail .. " " .. references
+            local line_num = location.range.start.line + 1
+            detail = node.symbol.detail .. " " .. line_num .. " " .. references
         end
     elseif node.call_hierarchy_item ~= nil then
         references = (function() if node.references ~= nil then return #node.references else return "" end end)()
@@ -32,9 +34,11 @@ function M.marshal_func(node)
         end
         local file, relative = lib_util.relative_path_from_uri(location.uri)
         if relative then
-            detail = file .. " " .. references
+            local line_num = location.range.start.line + 1
+            detail = file .. " " .. line_num .. " " .. references
         elseif node.call_hierarchy_item.detail ~= nil then
-            detail = node.call_hierarchy_item.detail .. " " .. references
+            local line_num = location.range.start.line + 1
+            detail = node.call_hierarchy_item.detail .. " " .. line_num .. " " .. references
         end
     end
     return name, detail, icon
