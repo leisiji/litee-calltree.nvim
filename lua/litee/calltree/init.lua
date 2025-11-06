@@ -291,6 +291,24 @@ M.jump_calltree = function(split)
         return
     end
     local location = ctx.node.location
+
+    -- For incoming calls, try to jump to the reference location (where the call is made)
+    -- instead of the function definition location
+    if ctx.state["calltree"].direction == "from" and ctx.node.references ~= nil and #ctx.node.references > 0 then
+        location = {
+            uri = ctx.node.location.uri,
+            range = ctx.node.references[1]
+        }
+
+        -- Update last_jumped_reference for cycling through multiple call locations
+        local autocmds = require('litee.calltree.autocmds')
+        autocmds.last_jumped_reference = {
+            node_key = ctx.node.key,
+            ref_idx = 1,
+            node = ctx.node
+        }
+    end
+
     if location == nil or location.range.start.line == -1 then
         return
     end
