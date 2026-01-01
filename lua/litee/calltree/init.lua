@@ -225,9 +225,9 @@ function M.toggle_calltree()
     end
 
     if not ctx.node.expanded then
-	M.expand_calltree()
+        M.expand_calltree()
     else
-	M.collapse_calltree()
+        M.collapse_calltree()
     end
 end
 
