@@ -406,7 +406,7 @@ function M.setup(user_config)
             lib_util_win.set_tree_highlights()
         end
         -- set scrolloff so contents stays centered
-        vim.api.nvim_win_set_option(vim.api.nvim_get_current_win(), "scrolloff", 9999)
+        vim.api.nvim_set_option_value("scrolloff", 9999, { win = vim.api.nvim_get_current_win() })
     end
 
     -- merge in config
@@ -428,10 +428,8 @@ function M.setup(user_config)
 
     lib_panel.register_component("calltree", pre_window_create, post_window_create)
 
-    vim.lsp.handlers["callHierarchy/incomingCalls"] =
-        vim.lsp.with(require("litee.calltree.handlers").ch_lsp_handler("from"), {})
-    vim.lsp.handlers["callHierarchy/outgoingCalls"] =
-        vim.lsp.with(require("litee.calltree.handlers").ch_lsp_handler("to"), {})
+    vim.lsp.handlers["callHierarchy/incomingCalls"] = require("litee.calltree.handlers").ch_lsp_handler("from")
+    vim.lsp.handlers["callHierarchy/outgoingCalls"] = require("litee.calltree.handlers").ch_lsp_handler("to")
 
     require("litee.calltree.commands").setup()
 end

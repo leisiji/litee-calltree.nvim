@@ -4,8 +4,6 @@ local lib_tree = require("litee.lib.tree")
 local lib_tree_node = require("litee.lib.tree.node")
 local lib_lsp = require("litee.lib.lsp")
 local lib_notify = require("litee.lib.notify")
-local lib_util_win = require("litee.lib.util.window")
-local lib_path = require("litee.lib.util.path")
 
 local config = require("litee.calltree.config").config
 local calltree_marshal = require("litee.calltree.marshal")
@@ -30,8 +28,6 @@ local function keyify(call_hierarchy_item)
     end
 end
 
-local update_autocmd_id = nil
-
 local function gen_children_lsp(result, direction)
     local children = {}
     for _, call_hierarchy_call in pairs(result) do
@@ -51,6 +47,27 @@ end
 local function refresh_tree(state)
     if state.win ~= nil and vim.api.nvim_win_is_valid(state.win) then
         lib_tree.write_tree(state.buf, state.tree, calltree_marshal.marshal_func)
+    end
+end
+
+local function update_or_open_panel(state, state_was_nil, cur_tabpage)
+    -- update component state and grab the global since we need it to toggle
+    -- the panel open.
+    local global_state = lib_state.put_component_state(cur_tabpage, "calltree", state)
+    if
+        not state_was_nil
+        and state.win ~= nil
+        and vim.api.nvim_win_is_valid(state.win)
+        and state.buf ~= nil
+        and vim.api.nvim_buf_is_valid(state.buf)
+    then
+        lib_tree.write_tree(state.buf, state.tree, calltree_marshal.marshal_func)
+    else
+        if config.on_open == "popout" then
+            lib_panel.popout_to("calltree", global_state)
+        else
+            lib_panel.toggle_panel(global_state, true, false)
+        end
     end
 end
 
@@ -115,15 +132,8 @@ end
 -- a calltree.
 M.ch_lsp_handler = function(direction)
     return function(err, result, ctx, _)
-        if err ~= nil then
+        if err ~= nil or result == nil then
             return
-        end
-        if result == nil then
-            return
-        end
-
-        if update_autocmd_id ~= nil then
-            vim.api.nvim_del_autocmd(update_autocmd_id)
         end
 
         local cur_buf = vim.api.nvim_get_current_buf()
@@ -176,10 +186,6 @@ M.ch_lsp_handler = function(direction)
         -- popup.
         lib_notify.close_notify_popup()
 
-        -- update component state and grab the global since we need it to toggle
-        -- the panel open.
-        local global_state = lib_state.put_component_state(cur_tabpage, "calltree", state)
-
         -- gather symbols async
         if config.resolve_symbols then
             lib_lsp.gather_symbols_async(root, children, state, function()
@@ -190,35 +196,8 @@ M.ch_lsp_handler = function(direction)
                     recursively_expand_node(child, state, direction, 0, config.max_depth)
                 end
 
-                -- lib_panel.toggle_panel(global_state, false, true)
-                -- state was not nil, can we reuse the existing win
-                -- and buffer?
-                if
-                    not state_was_nil
-                    and state.win ~= nil
-                    and vim.api.nvim_win_is_valid(state.win)
-                    and state.buf ~= nil
-                    and vim.api.nvim_buf_is_valid(state.buf)
-                then
-                    lib_tree.write_tree(state.buf, state.tree, calltree_marshal.marshal_func)
-                else
-                    -- we have no state, so open up the panel or popout to create
-                    -- a window and buffer.
-                    if config.on_open == "popout" then
-                        lib_panel.popout_to("calltree", global_state)
-                    else
-                        lib_panel.toggle_panel(global_state, true, false)
-                    end
-                end
+                update_or_open_panel(state, state_was_nil, cur_tabpage)
             end)
-            -- setup an autocmd for this buffer to keep symbols update to date.
-            update_autocmd_id = vim.api.nvim_create_autocmd(
-                { "CursorHold", "TextChanged", "BufEnter", "BufWritePost", "WinEnter" },
-                {
-                    buffer = state.cur_buf,
-                    callback = M.update_calltree_extmarks,
-                }
-            )
             return
         end
         lib_tree.add_node(state.tree, root, children)
@@ -228,34 +207,7 @@ M.ch_lsp_handler = function(direction)
             recursively_expand_node(child, state, direction, 0, config.max_depth)
         end
 
-        -- state was not nil, can we reuse the existing win
-        -- and buffer?
-        if
-            not state_was_nil
-            and state.win ~= nil
-            and vim.api.nvim_win_is_valid(state.win)
-            and state.buf ~= nil
-            and vim.api.nvim_buf_is_valid(state.buf)
-        then
-            lib_tree.write_tree(state.buf, state.tree, calltree_marshal.marshal_func)
-        else
-            -- we have no state, so open up the panel or popout to create
-            -- a window and buffer.
-            if config.on_open == "popout" then
-                lib_panel.popout_to("calltree", global_state)
-            else
-                lib_panel.toggle_panel(global_state, true, false)
-            end
-        end
-
-        -- setup an autocmd for this buffer to keep symbols update to date.
-        update_autocmd_id = vim.api.nvim_create_autocmd(
-            { "CursorHold", "TextChanged", "BufEnter", "BufWritePost", "WinEnter" },
-            {
-                buffer = cur_buf,
-                callback = M.update_calltree_extmarks,
-            }
-        )
+        update_or_open_panel(state, state_was_nil, cur_tabpage)
     end
 end
 
@@ -298,7 +250,7 @@ function M.calltree_expand_handler(node, linenr, direction, state)
                 lib_tree.write_tree_no_guide_leaf(
                     state["calltree"].buf,
                     state["calltree"].tree,
-                    require("litee.calltree.marshal").marshal_func
+                    calltree_marshal.marshal_func
                 )
                 vim.api.nvim_win_set_cursor(state["calltree"].win, linenr)
             end)
@@ -307,11 +259,7 @@ function M.calltree_expand_handler(node, linenr, direction, state)
         end
 
         lib_tree.add_node(state["calltree"].tree, node, children)
-        lib_tree.write_tree_no_guide_leaf(
-            state["calltree"].buf,
-            state["calltree"].tree,
-            require("litee.calltree.marshal").marshal_func
-        )
+        lib_tree.write_tree_no_guide_leaf(state["calltree"].buf, state["calltree"].tree, calltree_marshal.marshal_func)
         vim.api.nvim_win_set_cursor(state["calltree"].win, linenr)
     end
 end
@@ -342,18 +290,7 @@ function M.calltree_switch_handler(direction, state)
         root.symbol = lib_lsp.symbol_from_node(state["calltree"].active_lsp_clients, root, state["calltree"].buf)
 
         -- create the root's children nodes via the response array.
-        local children = {}
-        for _, call_hierarchy_call in pairs(result) do
-            local child =
-                lib_tree_node.new_node(call_hierarchy_call[direction].name, keyify(call_hierarchy_call[direction]))
-            child.call_hierarchy_item = call_hierarchy_call[direction]
-            child.location = {
-                uri = child.call_hierarchy_item.uri,
-                range = child.call_hierarchy_item.range,
-            }
-            child.references = call_hierarchy_call["fromRanges"]
-            table.insert(children, child)
-        end
+        local children = gen_children_lsp(result, direction)
 
         if config.resolve_symbols then
             lib_lsp.gather_symbols_async(root, children, state["calltree"], function()
@@ -361,7 +298,7 @@ function M.calltree_switch_handler(direction, state)
                 lib_tree.write_tree_no_guide_leaf(
                     state["calltree"].buf,
                     state["calltree"].tree,
-                    require("litee.calltree.marshal").marshal_func
+                    calltree_marshal.marshal_func
                 )
                 vim.api.nvim_buf_set_name(
                     state["calltree"].buf,
@@ -372,18 +309,20 @@ function M.calltree_switch_handler(direction, state)
         end
 
         lib_tree.add_node(state["calltree"].tree, root, children)
-        lib_tree.write_tree_no_guide_leaf(
-            state["calltree"].buf,
-            state["calltree"].tree,
-            require("litee.calltree.marshal").marshal_func
-        )
+        lib_tree.write_tree_no_guide_leaf(state["calltree"].buf, state["calltree"].tree, calltree_marshal.marshal_func)
         -- swap directions so highlighting knows what's up.
         state.direction = direction
     end
 end
 
+-- update_calltree_extmarks will run thru all the nodes in
+-- the current calltree for the current tab and sync up the
+-- node's location field with their extmark (or create an extmark)
+-- if necessary.
+--[[
+local lib_util_win = require("litee.lib.util.window")
+local lib_path = require("litee.lib.util.path")
 local ns_id = vim.api.nvim_create_namespace("calltree-extmarks")
-
 local function _update_calltree_extmarks(node, buf)
     if node.extmark == nil then
         -- extmark is nil, and buffer is open, create a extmark
@@ -447,10 +386,6 @@ local function _update_calltree_extmarks(node, buf)
     end
 end
 
--- update_calltree_extmarks will run thru all the nodes in
--- the current calltree for the current tab and sync up the
--- node's location field with their extmark (or create an extmark)
--- if necessary.
 function M.update_calltree_extmarks()
     local buf = vim.api.nvim_get_current_buf()
     local win = vim.api.nvim_get_current_win()
@@ -479,5 +414,6 @@ function M.update_calltree_extmarks()
         end
     end
 end
+]]
 
 return M

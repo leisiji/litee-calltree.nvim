@@ -12,7 +12,7 @@ function M._setup_buffer(name, buf, tab)
     if buf == nil or not vim.api.nvim_buf_is_valid(buf) then
         buf = vim.api.nvim_create_buf(false, false)
         if buf == 0 then
-            vim.api.nvim_err_writeln("calltree.buffer: buffer create failed")
+            vim.notify("calltree.buffer: buffer create failed", vim.log.levels.ERROR)
             return
         end
     else
@@ -21,13 +21,13 @@ function M._setup_buffer(name, buf, tab)
 
     -- set buf options
     vim.api.nvim_buf_set_name(buf, name .. ":" .. tab)
-    vim.api.nvim_buf_set_option(buf, "bufhidden", "hide")
-    vim.api.nvim_buf_set_option(buf, "filetype", "calltree")
-    vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
-    vim.api.nvim_buf_set_option(buf, "modifiable", false)
-    vim.api.nvim_buf_set_option(buf, "swapfile", false)
-    vim.api.nvim_buf_set_option(buf, "textwidth", 0)
-    vim.api.nvim_buf_set_option(buf, "wrapmargin", 0)
+    vim.api.nvim_set_option_value("bufhidden", "hide", { buf = buf })
+    vim.api.nvim_set_option_value("filetype", "calltree", { buf = buf })
+    vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+    vim.api.nvim_set_option_value("swapfile", false, { buf = buf })
+    vim.api.nvim_set_option_value("textwidth", 0, { buf = buf })
+    vim.api.nvim_set_option_value("wrapmargin", 0, { buf = buf })
 
     vim.api.nvim_create_autocmd({ "BufWinLeave" }, {
         buffer = buf,

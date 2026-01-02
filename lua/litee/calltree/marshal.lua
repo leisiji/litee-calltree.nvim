@@ -9,6 +9,7 @@ function M.marshal_func(node)
     local icon_set = require("litee.calltree").icon_set
     local location = node.location
     local name, detail, icon = "", "", ""
+    local references
     -- prefer the symbol info if available
     if node.symbol ~= nil then
         references = (function()
