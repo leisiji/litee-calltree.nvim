@@ -2,6 +2,7 @@ local M = {}
 
 M.config = {
     resolve_symbols = true,
+    max_depth = 5,
     jump_mode = "invoking",
     hide_cursor = true,
     map_resize_keys = true,

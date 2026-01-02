@@ -171,6 +171,8 @@ work correctly.
 The config table is described below:
 
     M.config = {
+        -- Maximum depth of the call tree to display. Higher values may impact performance.
+        max_depth = 5,
         -- When retrieving Call Hierarchy items some language servers will respond with
         -- different symbol names then when a document symbol or workspace symbol request
         -- is made. 

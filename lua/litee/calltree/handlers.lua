@@ -30,6 +30,85 @@ end
 
 local update_autocmd_id = nil
 
+local function gen_children_lsp(result, direction)
+    local children = {}
+    for _, call_hierarchy_call in pairs(result) do
+        local child = lib_tree_node.new_node(
+           call_hierarchy_call[direction].name,
+           keyify(call_hierarchy_call[direction])
+        )
+        child.call_hierarchy_item = call_hierarchy_call[direction]
+        child.location = {
+            uri = child.call_hierarchy_item.uri,
+            range = child.call_hierarchy_item.range
+        }
+        child.references = call_hierarchy_call["fromRanges"]
+        table.insert(children, child)
+    end
+    return children
+end
+
+local function refresh_tree(state)
+    if state.win ~= nil and vim.api.nvim_win_is_valid(state.win) then
+        lib_tree.write_tree(state.buf, state.tree, calltree_marshal.marshal_func)
+    end
+end
+
+-- recursively_expand_node recursively expands all children of a node
+--
+-- node : tree.node.Node - the node to expand
+--
+-- state : table - the calltree component state
+--
+-- direction : string - "to" or "from", the call hierarchy direction
+--
+-- depth : number - current recursion depth (default 0)
+--
+-- max_depth : number - maximum recursion depth (default nil for unlimited)
+local function recursively_expand_node(node, state, direction, depth, max_depth)
+    if depth >= max_depth then
+        return
+    end
+
+    -- mark node as expanded
+    node.expanded = true
+
+    -- make LSP request to get children
+    lib_lsp.multi_client_request(
+        state.active_lsp_clients,
+        direction_map[direction].method,
+        { item = node.call_hierarchy_item },
+        function(err, result, _, _)
+            if err ~= nil or result == nil then
+                return
+            end
+
+            local children = gen_children_lsp(result, direction)
+
+            -- add children to tree
+            if config.resolve_symbols then
+                lib_lsp.gather_symbols_async(node, children, state, function()
+
+                    lib_tree.add_node(state.tree, node, children)
+                    for _, child in ipairs(children) do
+                        recursively_expand_node(child, state, direction, depth + 1, max_depth)
+                    end
+                    refresh_tree(state)
+                end)
+                return
+            end
+
+            lib_tree.add_node(state.tree, node, children)
+
+            for _, child in ipairs(children) do
+                recursively_expand_node(child, state, direction, depth + 1, config.max_depth)
+            end
+            refresh_tree(state)
+        end,
+        state.buf
+    )
+end
+
 -- ch_lsp_handler is the call heirarchy handler
 -- used in replacement to the default lsp handler.
 --
@@ -92,20 +171,7 @@ M.ch_lsp_handler = function(direction)
         root.references = ctx.params.item.fromRanges
 
         -- create the root's children nodes via the response array.
-        local children = {}
-        for _, call_hierarchy_call in pairs(result) do
-          local child = lib_tree_node.new_node(
-             call_hierarchy_call[direction].name,
-             keyify(call_hierarchy_call[direction])
-          )
-          child.call_hierarchy_item = call_hierarchy_call[direction]
-          child.location = {
-              uri = child.call_hierarchy_item.uri,
-              range = child.call_hierarchy_item.range
-          }
-          child.references = call_hierarchy_call["fromRanges"]
-          table.insert(children, child)
-        end
+        local children = gen_children_lsp(result, direction)
 
         -- if lsp.wrappers are being used this closes the notification
         -- popup.
@@ -119,6 +185,12 @@ M.ch_lsp_handler = function(direction)
         if config.resolve_symbols then
             lib_lsp.gather_symbols_async(root, children, state, function()
                 lib_tree.add_node(state.tree, root, children)
+
+                -- recursively expand all children
+                for _, child in ipairs(children) do
+                    recursively_expand_node(child, state, direction, 0, config.max_depth)
+                end
+
                 -- lib_panel.toggle_panel(global_state, false, true)
                 -- state was not nil, can we reuse the existing win
                 -- and buffer?
@@ -144,17 +216,22 @@ M.ch_lsp_handler = function(direction)
                     end
                 end
             end)
-                -- setup an autocmd for this buffer to keep symbols update to date.
-                update_autocmd_id = vim.api.nvim_create_autocmd(
-                    {"CursorHold","TextChanged","BufEnter","BufWritePost","WinEnter"},
-                    {
-                        buffer = state.cur_buf,
-                        callback = M.update_calltree_extmarks
-                    }
-                )
+            -- setup an autocmd for this buffer to keep symbols update to date.
+            update_autocmd_id = vim.api.nvim_create_autocmd(
+                {"CursorHold","TextChanged","BufEnter","BufWritePost","WinEnter"},
+                {
+                    buffer = state.cur_buf,
+                    callback = M.update_calltree_extmarks
+                }
+            )
             return
         end
         lib_tree.add_node(state.tree, root, children)
+
+        -- recursively expand all children
+        for _, child in ipairs(children) do
+            recursively_expand_node(child, state, direction, 0, config.max_depth)
+        end
 
         -- state was not nil, can we reuse the existing win
         -- and buffer?
@@ -216,26 +293,13 @@ function M.calltree_expand_handler(node, linenr, direction, state)
             lib_tree.write_tree_no_guide_leaf(
                 state["calltree"].buf,
                 state["calltree"].tree,
-                require('litee.calltree.marshal').marshal_func
+                calltree_marshal.marshal_func
             )
             vim.api.nvim_win_set_cursor(state["calltree"].win, linenr)
             return
         end
 
-        local children = {}
-        for _, call_hierarchy_call in pairs(result) do
-            local child = lib_tree_node.new_node(
-               call_hierarchy_call[direction].name,
-               keyify(call_hierarchy_call[direction])
-            )
-            child.call_hierarchy_item = call_hierarchy_call[direction]
-            child.location = {
-                uri = child.call_hierarchy_item.uri,
-                range = child.call_hierarchy_item.range
-            }
-            child.references = call_hierarchy_call["fromRanges"]
-            table.insert(children, child)
-        end
+        local children = gen_children_lsp(result, direction)
 
         if config.resolve_symbols then
             lib_lsp.gather_symbols_async(node, children, state["calltree"], function()
