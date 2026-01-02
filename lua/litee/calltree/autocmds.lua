@@ -1,8 +1,8 @@
-local lib_state     = require("litee.lib.state")
-local lib_tree      = require("litee.lib.tree")
-local lib_autohi    = require('litee.lib.highlights.auto')
-local lib_hi        = require('litee.lib.highlights')
-local lib_path          = require('litee.lib.util.path')
+local lib_state = require("litee.lib.state")
+local lib_tree = require("litee.lib.tree")
+local lib_autohi = require("litee.lib.highlights.auto")
+local lib_hi = require("litee.lib.highlights")
+local lib_path = require("litee.lib.util.path")
 
 local M = {}
 
@@ -12,19 +12,22 @@ local M = {}
 --
 -- see return type for details.
 local function ui_req_ctx()
-    local buf    = vim.api.nvim_get_current_buf()
-    local win    = vim.api.nvim_get_current_win()
-    local tab    = vim.api.nvim_win_get_tabpage(win)
+    local buf = vim.api.nvim_get_current_buf()
+    local win = vim.api.nvim_get_current_win()
+    local tab = vim.api.nvim_win_get_tabpage(win)
     local linenr = vim.api.nvim_win_get_cursor(win)
-    local tree_type   = lib_state.get_type_from_buf(tab, buf)
+    local tree_type = lib_state.get_type_from_buf(tab, buf)
     local tree_handle = lib_state.get_tree_from_buf(tab, buf)
-    local state       = lib_state.get_state(tab)
+    local state = lib_state.get_state(tab)
 
     local cursor = nil
     local node = nil
     if state ~= nil then
-        if state["calltree"] ~= nil and state["calltree"].win ~= nil and
-            vim.api.nvim_win_is_valid(state["calltree"].win) then
+        if
+            state["calltree"] ~= nil
+            and state["calltree"].win ~= nil
+            and vim.api.nvim_win_is_valid(state["calltree"].win)
+        then
             cursor = vim.api.nvim_win_get_cursor(state["calltree"].win)
         end
         node = lib_tree.marshal_line(cursor, state["calltree"].tree)
@@ -51,7 +54,7 @@ local function ui_req_ctx()
         state = state,
         -- the current marshalled node if there's a valid calltree
         -- window present.
-        node = node
+        node = node,
     }
 end
 
@@ -86,9 +89,7 @@ function M.jumpto_next_reference()
     if ctx.node == nil then
         return
     end
-    if
-        ctx.node.key ~= M.last_jumped_reference.node_key
-    then
+    if ctx.node.key ~= M.last_jumped_reference.node_key then
         return
     end
     local wins = {}
@@ -99,7 +100,7 @@ function M.jumpto_next_reference()
             end
         end
     else
-            local node_path = lib_path.strip_file_prefix(M.last_jumped_reference.node.location.uri)
+        local node_path = lib_path.strip_file_prefix(M.last_jumped_reference.node.location.uri)
         for _, win in ipairs(vim.api.nvim_list_wins()) do
             local buf = vim.api.nvim_win_get_buf(win)
             local name = vim.api.nvim_buf_get_name(buf)
@@ -116,12 +117,12 @@ function M.jumpto_next_reference()
     end
     local ref = ctx.node.references[i]
     for _, win in ipairs(wins) do
-        vim.api.nvim_win_set_cursor(win, {ref["start"].line+1, 0})
+        vim.api.nvim_win_set_cursor(win, { ref["start"].line + 1, 0 })
     end
     M.last_jumped_reference = {
         node_key = ctx.node.key,
         ref_idx = i,
-        node = M.last_jumped_reference.node
+        node = M.last_jumped_reference.node,
     }
 end
 
@@ -131,8 +132,10 @@ function M.highlight(set)
         return
     end
 
-    if ctx.state["calltree"].invoking_buf == nil or
-        not vim.api.nvim_buf_is_valid(ctx.state["calltree"].invoking_buf) then
+    if
+        ctx.state["calltree"].invoking_buf == nil
+        or not vim.api.nvim_buf_is_valid(ctx.state["calltree"].invoking_buf)
+    then
         return
     end
 
@@ -143,12 +146,7 @@ function M.highlight(set)
         end
     end
 
-    vim.api.nvim_buf_clear_namespace(
-        ctx.state["calltree"].invoking_buf,
-        M.highlight_ns,
-        0,
-        -1
-    )
+    vim.api.nvim_buf_clear_namespace(ctx.state["calltree"].invoking_buf, M.highlight_ns, 0, -1)
     if not set then
         return
     end
@@ -169,7 +167,7 @@ function M.highlight(set)
             range["end"].character
         )
         for _, win in ipairs(wins) do
-            vim.api.nvim_win_set_cursor(win, {range["start"].line+1, 0})
+            vim.api.nvim_win_set_cursor(win, { range["start"].line + 1, 0 })
         end
         return
     end
@@ -188,12 +186,12 @@ function M.highlight(set)
                 )
                 if i == 1 then
                     for _, win in ipairs(wins) do
-                        vim.api.nvim_win_set_cursor(win, {ref["start"].line+1, 0})
+                        vim.api.nvim_win_set_cursor(win, { ref["start"].line + 1, 0 })
                     end
                     M.last_jumped_reference = {
                         node_key = ctx.node.key,
                         ref_idx = 1,
-                        node = ctx.node
+                        node = ctx.node,
                     }
                 end
             end
@@ -221,12 +219,12 @@ function M.highlight(set)
                 )
                 if i == 1 then
                     for _, win in ipairs(wins) do
-                        vim.api.nvim_win_set_cursor(win, {ref["start"].line+1, 0})
+                        vim.api.nvim_win_set_cursor(win, { ref["start"].line + 1, 0 })
                     end
                     M.last_jumped_reference = {
                         node_key = ctx.node.key,
                         ref_idx = 1,
-                        node = ctx.node
+                        node = ctx.node,
                     }
                 end
             end

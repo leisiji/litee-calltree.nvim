@@ -1,10 +1,10 @@
-local lib_util = require('litee.lib.util')
+local lib_util = require("litee.lib.util")
 
 local M = {}
 
 local direction_map = {
     from = "Incoming",
-    to   = "Outgoing",
+    to = "Outgoing",
 }
 
 function M.details_func(state, node)
@@ -13,7 +13,12 @@ function M.details_func(state, node)
 
     local name = node.name
     local direction = direction_map[component_state.direction]
-    local references = nil; references = (function() if node.references ~= nil then return #node.references end end)()
+    local references = nil
+    references = (function()
+        if node.references ~= nil then
+            return #node.references
+        end
+    end)()
     local detail = node.call_hierarchy_item.detail
     local children = nil
     if node.expanded then

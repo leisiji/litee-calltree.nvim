@@ -1,4 +1,4 @@
-local config = require('litee.calltree.config').config
+local config = require("litee.calltree.config").config
 
 local M = {}
 
@@ -11,10 +11,7 @@ local M = {}
 -- returns:
 --   "buf_handle"  -- handle to a valid calltree help buffer
 function M._setup_help_buffer(help_buf_handle)
-    if
-        help_buf_handle == nil
-        or not vim.api.nvim_buf_is_valid(help_buf_handle)
-    then
+    if help_buf_handle == nil or not vim.api.nvim_buf_is_valid(help_buf_handle) then
         local buf = vim.api.nvim_create_buf(false, false)
         if buf == 0 then
             vim.api.nvim_err_writeln("ui.help failed: buffer create failed")
@@ -56,14 +53,14 @@ function M._setup_help_buffer(help_buf_handle)
     end
     -- set buf options
     vim.api.nvim_buf_set_name(help_buf_handle, "Calltree Help")
-    vim.api.nvim_buf_set_option(help_buf_handle, 'bufhidden', 'hide')
-    vim.api.nvim_buf_set_option(help_buf_handle, 'filetype', 'Calltree')
-    vim.api.nvim_buf_set_option(help_buf_handle, 'buftype', 'nofile')
-    vim.api.nvim_buf_set_option(help_buf_handle, 'modifiable', false)
-    vim.api.nvim_buf_set_option(help_buf_handle, 'swapfile', false)
+    vim.api.nvim_buf_set_option(help_buf_handle, "bufhidden", "hide")
+    vim.api.nvim_buf_set_option(help_buf_handle, "filetype", "Calltree")
+    vim.api.nvim_buf_set_option(help_buf_handle, "buftype", "nofile")
+    vim.api.nvim_buf_set_option(help_buf_handle, "modifiable", false)
+    vim.api.nvim_buf_set_option(help_buf_handle, "swapfile", false)
 
     -- set buffer local keymaps
-    local opts = {silent=true, noremap=true}
+    local opts = { silent = true, noremap = true }
     vim.api.nvim_buf_set_keymap(help_buf_handle, "n", "?", ":lua require('litee.calltree').help(false)<CR>", opts)
 
     return help_buf_handle

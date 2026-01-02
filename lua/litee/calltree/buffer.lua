@@ -1,7 +1,7 @@
-local config = require('litee.calltree.config').config
-local panel_config = require('litee.lib.config').config["panel"]
-local lib_util_buf = require('litee.lib.util.buffer')
-local autocmds = require('litee.calltree.autocmds')
+local config = require("litee.calltree.config").config
+local panel_config = require("litee.lib.config").config["panel"]
+local lib_util_buf = require("litee.lib.util.buffer")
+local autocmds = require("litee.calltree.autocmds")
 
 local M = {}
 
@@ -21,29 +21,33 @@ function M._setup_buffer(name, buf, tab)
 
     -- set buf options
     vim.api.nvim_buf_set_name(buf, name .. ":" .. tab)
-    vim.api.nvim_buf_set_option(buf, 'bufhidden', 'hide')
-    vim.api.nvim_buf_set_option(buf, 'filetype', 'calltree')
-    vim.api.nvim_buf_set_option(buf, 'buftype', 'nofile')
-    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
-    vim.api.nvim_buf_set_option(buf, 'swapfile', false)
-    vim.api.nvim_buf_set_option(buf, 'textwidth', 0)
-    vim.api.nvim_buf_set_option(buf, 'wrapmargin', 0)
+    vim.api.nvim_buf_set_option(buf, "bufhidden", "hide")
+    vim.api.nvim_buf_set_option(buf, "filetype", "calltree")
+    vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
+    vim.api.nvim_buf_set_option(buf, "modifiable", false)
+    vim.api.nvim_buf_set_option(buf, "swapfile", false)
+    vim.api.nvim_buf_set_option(buf, "textwidth", 0)
+    vim.api.nvim_buf_set_option(buf, "wrapmargin", 0)
 
-    vim.api.nvim_create_autocmd({"BufWinLeave"}, {
+    vim.api.nvim_create_autocmd({ "BufWinLeave" }, {
         buffer = buf,
-        callback = function () require('litee.lib.jumps').set_jump_hl(false) end
+        callback = function()
+            require("litee.lib.jumps").set_jump_hl(false)
+        end,
     })
 
     -- au to (re)set source code highlights when a calltree node is hovered.
     if config.auto_highlight then
-        vim.api.nvim_create_autocmd({"CursorMoved"}, {
+        vim.api.nvim_create_autocmd({ "CursorMoved" }, {
             buffer = buf,
-            callback = function () require('litee.calltree.autocmds').highlight(true) end
+            callback = function()
+                require("litee.calltree.autocmds").highlight(true)
+            end,
         })
     end
 
     -- set buffer local keymaps
-    local opts = {silent=true, noremap=true}
+    local opts = { silent = true, noremap = true }
     if not config.disable_keymaps then
         vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.expand, ":LTExpandCalltree<CR>", opts)
         vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.collapse, ":LTCollapseCalltree<CR>", opts)
@@ -58,16 +62,27 @@ function M._setup_buffer(name, buf, tab)
         vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.hide, ":LTHideCalltree<CR>", opts)
         vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.close, ":LTCloseCalltree<CR>", opts)
         vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.close_panel_pop_out, ":LTClosePanelPopOut<CR>", opts)
-        vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.help, ":lua require('litee.calltree').help(true)<CR>", opts)
+        vim.api.nvim_buf_set_keymap(
+            buf,
+            "n",
+            config.keymaps.help,
+            ":lua require('litee.calltree').help(true)<CR>",
+            opts
+        )
         vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.focus, ":LTFocusCalltree<CR>", opts)
         vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.switch, ":LTSwitchCalltree<CR>", opts)
-        vim.api.nvim_buf_set_keymap(buf, "n", config.keymaps.next_ref, "", {silent=true, noremap=true, callback=autocmds.jumpto_next_reference})
+        vim.api.nvim_buf_set_keymap(
+            buf,
+            "n",
+            config.keymaps.next_ref,
+            "",
+            { silent = true, noremap = true, callback = autocmds.jumpto_next_reference }
+        )
     end
-	if config.map_resize_keys then
-           lib_util_buf.map_resize_keys(panel_config.orientation, buf, opts)
+    if config.map_resize_keys then
+        lib_util_buf.map_resize_keys(panel_config.orientation, buf, opts)
     end
     return buf
 end
-
 
 return M

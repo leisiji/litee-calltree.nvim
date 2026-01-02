@@ -1,4 +1,4 @@
-local lib_util = require('litee.lib.util')
+local lib_util = require("litee.lib.util")
 
 local M = {}
 
@@ -6,12 +6,18 @@ local M = {}
 -- values for marshalling a calltree node into a buffer
 -- line.
 function M.marshal_func(node)
-    local icon_set = require('litee.calltree').icon_set
+    local icon_set = require("litee.calltree").icon_set
     local location = node.location
     local name, detail, icon = "", "", ""
     -- prefer the symbol info if available
     if node.symbol ~= nil then
-        references = (function() if node.references ~= nil then return #node.references else return "" end end)()
+        references = (function()
+            if node.references ~= nil then
+                return #node.references
+            else
+                return ""
+            end
+        end)()
         name = node.symbol.name
         local kind = vim.lsp.protocol.SymbolKind[node.symbol.kind]
         if kind ~= "" then
@@ -26,7 +32,13 @@ function M.marshal_func(node)
             detail = node.symbol.detail .. " " .. line_num .. " " .. references
         end
     elseif node.call_hierarchy_item ~= nil then
-        references = (function() if node.references ~= nil then return #node.references else return "" end end)()
+        references = (function()
+            if node.references ~= nil then
+                return #node.references
+            else
+                return ""
+            end
+        end)()
         name = node.name
         local kind = vim.lsp.protocol.SymbolKind[node.call_hierarchy_item.kind]
         if kind ~= "" then
